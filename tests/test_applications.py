@@ -172,3 +172,68 @@ def test_get_application_with_non_integer_id_returns_422():
     response = client.get("/applications/abc")
 
     assert response.status_code == 422
+
+
+def test_replace_application_returns_updated_record_and_saves_it():
+    created = client.post(
+        "/applications",
+        json={
+            "company": "IBM",
+            "role": "Intern",
+            "link": "https://example.com/job",
+            "notes": "Found on the careers page.",
+        },
+    ).json()
+    replacement = {
+        "company": "IBM",
+        "role": "Software Developer Intern",
+        "status": "interview",
+        "date_applied": "2026-11-26",
+    }
+
+    response = client.put(f"/applications/{created['id']}", json=replacement)
+
+    expected = {
+        "id": created["id"],
+        "company": "IBM",
+        "role": "Software Developer Intern",
+        "link": None,
+        "status": "interview",
+        "date_applied": "2026-11-26",
+        "notes": "",
+    }
+    assert response.status_code == 200
+    assert response.json() == expected
+    assert client.get(f"/applications/{created['id']}").json() == expected
+
+
+def test_replace_application_with_unknown_id_returns_404():
+    response = client.put(
+        "/applications/999", json={"company": "IBM", "role": "Intern"}
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Application not found"}
+    assert main.applications == {}
+
+
+@pytest.mark.parametrize(
+    "invalid_payload",
+    [
+        {"company": "   ", "role": "Intern"},
+        {"role": "Intern"},
+        {"company": "IBM", "role": "Intern", "status": "pending"},
+    ],
+)
+def test_replace_application_with_invalid_input_returns_422_and_keeps_record(
+    invalid_payload,
+):
+    created = client.post(
+        "/applications",
+        json={"company": "IBM", "role": "Intern", "status": "applied"},
+    ).json()
+
+    response = client.put(f"/applications/{created['id']}", json=invalid_payload)
+
+    assert response.status_code == 422
+    assert client.get(f"/applications/{created['id']}").json() == created

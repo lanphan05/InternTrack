@@ -69,3 +69,14 @@ def get_application(application_id: int) -> Application:
     if application is None:
         raise HTTPException(status_code=404, detail="Application not found")
     return application
+
+
+@app.put("/applications/{application_id}", response_model=Application)
+def replace_application(
+    application_id: int, payload: ApplicationCreate
+) -> Application:
+    if application_id not in applications:
+        raise HTTPException(status_code=404, detail="Application not found")
+    application = Application(id=application_id, **payload.model_dump())
+    applications[application_id] = application
+    return application
