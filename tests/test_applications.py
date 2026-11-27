@@ -112,6 +112,36 @@ def test_list_applications_returns_every_saved_record():
     assert response.json() == [first.json(), second.json()]
 
 
+def test_list_applications_filters_by_status():
+    client.post("/applications", json={"company": "IBM", "role": "Intern"})
+    applied = client.post(
+        "/applications",
+        json={"company": "Acme", "role": "Backend Intern", "status": "applied"},
+    )
+
+    response = client.get("/applications", params={"status": "applied"})
+
+    assert response.status_code == 200
+    assert response.json() == [applied.json()]
+
+
+def test_list_applications_with_valid_status_and_no_matches_returns_empty_list():
+    client.post("/applications", json={"company": "IBM", "role": "Intern"})
+
+    response = client.get("/applications", params={"status": "offer"})
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_list_applications_with_unsupported_status_returns_422():
+    client.post("/applications", json={"company": "IBM", "role": "Intern"})
+
+    response = client.get("/applications", params={"status": "pending"})
+
+    assert response.status_code == 422
+
+
 def test_get_application_returns_record_created_earlier():
     payload = {
         "company": "IBM",

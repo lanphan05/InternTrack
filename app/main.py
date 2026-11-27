@@ -53,8 +53,14 @@ def create_application(payload: ApplicationCreate) -> Application:
 
 
 @app.get("/applications", response_model=list[Application])
-def list_applications() -> list[Application]:
-    return list(applications.values())
+def list_applications(status: Status | None = None) -> list[Application]:
+    if status is None:
+        return list(applications.values())
+    return [
+        application
+        for application in applications.values()
+        if application.status == status
+    ]
 
 
 @app.get("/applications/{application_id}", response_model=Application)
