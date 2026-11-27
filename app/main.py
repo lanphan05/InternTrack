@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel, field_validator
 
 app = FastAPI(title="InternTrack")
@@ -53,8 +53,14 @@ def create_application(payload: ApplicationCreate) -> Application:
 
 
 @app.get("/applications", response_model=list[Application])
-def list_applications() -> list[Application]:
-    return list(applications.values())
+def list_applications(status: Status | None = None) -> list[Application]:
+    if status is None:
+        return list(applications.values())
+    return [
+        application
+        for application in applications.values()
+        if application.status == status
+    ]
 
 
 @app.get("/applications/{application_id}", response_model=Application)
@@ -63,3 +69,22 @@ def get_application(application_id: int) -> Application:
     if application is None:
         raise HTTPException(status_code=404, detail="Application not found")
     return application
+
+
+@app.put("/applications/{application_id}", response_model=Application)
+def replace_application(
+    application_id: int, payload: ApplicationCreate
+) -> Application:
+    if application_id not in applications:
+        raise HTTPException(status_code=404, detail="Application not found")
+    application = Application(id=application_id, **payload.model_dump())
+    applications[application_id] = application
+    return application
+
+
+@app.delete("/applications/{application_id}", status_code=204)
+def delete_application(application_id: int) -> Response:
+    if application_id not in applications:
+        raise HTTPException(status_code=404, detail="Application not found")
+    del applications[application_id]
+    return Response(status_code=204)
