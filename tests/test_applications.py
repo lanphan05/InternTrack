@@ -90,3 +90,55 @@ def test_unsupported_status_returns_422():
 
     assert response.status_code == 422
     assert main.applications == {}
+
+
+def test_list_applications_returns_empty_list_when_none_saved():
+    response = client.get("/applications")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_list_applications_returns_every_saved_record():
+    first = client.post("/applications", json={"company": "IBM", "role": "Intern"})
+    second = client.post(
+        "/applications",
+        json={"company": "Acme", "role": "Backend Intern", "status": "applied"},
+    )
+
+    response = client.get("/applications")
+
+    assert response.status_code == 200
+    assert response.json() == [first.json(), second.json()]
+
+
+def test_get_application_returns_record_created_earlier():
+    payload = {
+        "company": "IBM",
+        "role": "Software Developer Intern",
+        "link": "https://example.com/job",
+        "status": "applied",
+        "date_applied": "2026-11-26",
+        "notes": "Applied through the careers page.",
+    }
+    created = client.post("/applications", json=payload).json()
+
+    response = client.get(f"/applications/{created['id']}")
+
+    assert response.status_code == 200
+    assert response.json() == {"id": created["id"], **payload}
+
+
+def test_get_application_with_unknown_id_returns_404():
+    client.post("/applications", json={"company": "IBM", "role": "Intern"})
+
+    response = client.get("/applications/999")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Application not found"}
+
+
+def test_get_application_with_non_integer_id_returns_422():
+    response = client.get("/applications/abc")
+
+    assert response.status_code == 422
