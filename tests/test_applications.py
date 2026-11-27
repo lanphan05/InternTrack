@@ -237,3 +237,33 @@ def test_replace_application_with_invalid_input_returns_422_and_keeps_record(
 
     assert response.status_code == 422
     assert client.get(f"/applications/{created['id']}").json() == created
+
+
+def test_delete_application_returns_204_with_empty_body():
+    created = client.post("/applications", json={"company": "IBM", "role": "Intern"})
+
+    response = client.delete(f"/applications/{created.json()['id']}")
+
+    assert response.status_code == 204
+    assert response.content == b""
+
+
+def test_get_deleted_application_returns_404():
+    created = client.post("/applications", json={"company": "IBM", "role": "Intern"})
+    application_id = created.json()["id"]
+
+    client.delete(f"/applications/{application_id}")
+    response = client.get(f"/applications/{application_id}")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Application not found"}
+
+
+def test_delete_application_with_unknown_id_returns_404():
+    client.post("/applications", json={"company": "IBM", "role": "Intern"})
+
+    response = client.delete("/applications/999")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Application not found"}
+    assert len(main.applications) == 1
